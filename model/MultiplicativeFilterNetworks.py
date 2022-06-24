@@ -31,7 +31,6 @@ class SineLayer(nn.Module):
         if not isinstance(input, torch.Tensor):
             raise TypeError("input must be a torch.xTensor")
 
-
 class SIREN(nn.Module):
     """
     SIREN main class implementation
@@ -150,18 +149,18 @@ class GaborNet(nn.Module):
         return self.linear[self.k - 1](zi)
 
 
-def train(model, optim, nb_epochs=15000):
-    psnrs = []
-    for _ in tqdm(range(nb_epochs)):
-        model_output = model(pixel_coordinates)
-        loss = ((model_output - pixel_values) ** 2).mean()
-        psnrs.append(20 * np.log10(1.0 / np.sqrt(loss.item())))
+    def train(model, optim, nb_epochs=15000):
+        psnrs = []
+        for _ in tqdm(range(nb_epochs)):
+            model_output = model(pixel_coordinates)
+            loss = ((model_output - pixel_values) ** 2).mean()
+            psnrs.append(20 * np.log10(1.0 / np.sqrt(loss.item())))
 
-        optim.zero_grad()
-        loss.backward()
-        optim.step()
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
 
-    return psnrs, model_output
+        return psnrs, model_output
 
 if __name__ == "__main__":
     device = "cuda"
