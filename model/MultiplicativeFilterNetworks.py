@@ -50,7 +50,8 @@ class SIREN(nn.Module):
     :param layers: list of number of neurons in each hidden layer
     :type layers: List[int]
 
-    :param in_features: number of input features
+    :param 
+    : number of input features
     :type in_features: int
 
     :param out_features: number of final output features
@@ -97,14 +98,14 @@ class SIREN(nn.Module):
 
 
 class GaborFilter(nn.Module):
-    def __init__(self, in_dim, out_dim, alpha, beta=1.0):
+    def __init__(self, in_features, out_features, alpha, beta=1.0):
         super(GaborFilter, self).__init__()
 
-        self.mu = nn.Parameter(torch.rand((out_dim, in_dim)) * 2 - 1)
+        self.mu = nn.Parameter(torch.rand((out_features, in_features)) * 2 - 1)
         self.gamma = nn.Parameter(
-            torch.distributions.gamma.Gamma(alpha, beta).sample((out_dim,))
+            torch.distributions.gamma.Gamma(alpha, beta).sample((out_features,))
         )
-        self.linear = torch.nn.Linear(in_dim, out_dim)
+        self.linear = torch.nn.Linear(in_features, out_features)
 
         # Init weights
         self.linear.weight.data *= 128.0 * torch.sqrt(self.gamma.unsqueeze(-1))
@@ -122,21 +123,32 @@ class GaborFilter(nn.Module):
 
 
 class GaborNet(nn.Module):
-    def __init__(self, in_dim=2, hidden_dim=256, out_dim=1, k=4):
+    
+    """
+    GaborNet implementation
+    .......................
+    :param in_channels: number of input channels
+    :type in_channels: int
+
+    :param out_channels: number of final output channels
+    :type out_channels: int
+
+    """
+    def __init__(self, in_channels=2, hidden_channels=256, out_channels=1, k=4):
         super(GaborNet, self).__init__()
 
         self.k = k
         self.gabon_filters = nn.ModuleList(
-            [GaborFilter(in_dim, hidden_dim, alpha=6.0 / k) for _ in range(k)]
+            [GaborFilter(in_channels, hidden_, alpha=6.0 / k) for _ in range(k)]
         )
         self.linear = nn.ModuleList(
-            [torch.nn.Linear(hidden_dim, hidden_dim) for _ in range(k - 1)]
-            + [torch.nn.Linear(hidden_dim, out_dim)]
+            [torch.nn.Linear(hidden_channels, hidden_channels) for _ in range(k - 1)]
+            + [torch.nn.Linear(hidden_channels, out_channels)]
         )
 
         for lin in self.linear[: k - 1]:
             lin.weight.data.uniform_(
-                -np.sqrt(1.0 / hidden_dim), np.sqrt(1.0 / hidden_dim)
+                -np.sqrt(1.0 / hidden_channels), np.sqrt(1.0 / hidden_channels)
             )
 
     def forward(self, x):
@@ -211,4 +223,3 @@ if __name__ == "__main__":
     axes[3].axis("off")
     plt.savefig("Grass.png")
     plt.close()
-
