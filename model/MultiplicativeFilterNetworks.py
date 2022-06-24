@@ -8,7 +8,6 @@ Original file is located at
 
 Author: Adwait Naik | Date: 23/06/2022
 """
-
 import numpy as np
 import skimage
 import matplotlib.pyplot as plt
@@ -21,7 +20,6 @@ from typing import List
 from tqdm import tqdm
 
 class SineLayer(nn.Module):
-
     """
     Reference:
         [Implicit Neural Representation with Periodic Activation
@@ -43,7 +41,6 @@ class SineLayer(nn.Module):
 
 
 class SIREN(nn.Module):
-
     """
     SIREN main class implementation
     ...............................
@@ -65,7 +62,6 @@ class SIREN(nn.Module):
               paper)
     :type w0_initial: float, optional
     """
-
     def __init__(
         self,
         layers: List[int],
@@ -123,7 +119,6 @@ class GaborFilter(nn.Module):
 
 
 class GaborNet(nn.Module):
-    
     """
     GaborNet implementation
     .......................
@@ -132,14 +127,13 @@ class GaborNet(nn.Module):
 
     :param out_channels: number of final output channels
     :type out_channels: int
-
     """
     def __init__(self, in_channels=2, hidden_channels=256, out_channels=1, k=4):
         super(GaborNet, self).__init__()
 
         self.k = k
         self.gabon_filters = nn.ModuleList(
-            [GaborFilter(in_channels, hidden_, alpha=6.0 / k) for _ in range(k)]
+            [GaborFilter(in_channels, hidden_channels, alpha=6.0 / k) for _ in range(k)]
         )
         self.linear = nn.ModuleList(
             [torch.nn.Linear(hidden_channels, hidden_channels) for _ in range(k - 1)]
