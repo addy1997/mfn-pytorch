@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-# Author: Adwait Naik
-# Implementation for Multiplicative Filter Networks
-
 import numpy as np
 import skimage
 import matplotlib.pyplot as plt
@@ -36,18 +32,14 @@ class SIREN(nn.Module):
     ...............................
     :param layers: list of number of neurons in each hidden layer
     :type layers: List[int]
-
     :param 
     : number of input features
     :type in_features: int
-
     :param out_features: number of final output features
     :type out_features: int
-
     :param w0: w0 in the activation step `act(x; omega_0) = sin(omega_0 * x)`.
               defaults to 1.0
     :type w0: float, optional
-
     :param w0_initial: `w0` of first layer. defaults to 30 (as used in the
               paper)
     :type w0_initial: float, optional
@@ -82,88 +74,69 @@ class SIREN(nn.Module):
     def forward(self, input):
         return self.net(input)
 
-class GaborFilter(nn.Module):
-    def __init__(self, in_features, out_features, alpha, beta=1.0):
-        super(GaborFilter, self).__init__()
+class GaborLayer(nn.Module):
+    def __init__(self, in_dim, out_dim, padding, alpha, beta=1.0, bias=False):
+        super(GaborLayer, self).__init__()
 
-        self.mu = nn.Parameter(torch.rand((out_features, in_features)) * 2 - 1)
-        self.gamma = nn.Parameter(
-            torch.distributions.gamma.Gamma(alpha, beta).sample((out_features,))
-        )
-        self.linear = torch.nn.Linear(in_features, out_features)
+        self.mu = nn.Parameter(torch.rand((out_dim, in_dim)) * 2 - 1)
+        self.gamma = nn.Parameter(torch.distributions.gamma.Gamma(alpha, beta).sample((out_dim, )))
+        self.linear = torch.nn.Linear(in_dim, out_dim)
+        #self.padding = padding
 
-        # Init weights
-        self.linear.weight.data *= 128.0 * torch.sqrt(self.gamma.unsqueeze(-1))
+        self.linear.weight.data *= 128. * torch.sqrt(self.gamma.unsqueeze(-1))
         self.linear.bias.data.uniform_(-np.pi, np.pi)
 
-    def forward(self, x):
-        norm = (
-            (x ** 2).sum(dim=1).unsqueeze(-1)
-            + (self.mu ** 2).sum(dim=1).unsqueeze(0)
-            - 2 * x @ self.mu.T
-        )
-        return torch.exp(-self.gamma.unsqueeze(0) / 2.0 * norm) * torch.sin(
-            self.linear(x)
-        )
+        # Bias parameters start in zeros
+        #self.bias = nn.Parameter(torch.zeros(self.responses)) if bias else None
+
+    def forward(self, input):
+        norm = (input ** 2).sum(dim=1).unsqueeze(-1) + (self.mu ** 2).sum(dim=1).unsqueeze(0) - 2 * input @ self.mu.T
+        return torch.exp(- self.gamma.unsqueeze(0) / 2. * norm) * torch.sin(self.linear(input))
+
 
 class GaborNet(nn.Module):
-    """
-    GaborNet implementation
-    
-    .......................
-    :param in_channels: number of input channels
-    :type in_channels: int
-
-    :param out_channels: number of final output channels
-    :type out_channels: int
-
-    :param hidden_channels: number of hidden channels
-    :type hidden_channels: int
-    """
-    def __init__(self, in_channels=2, hidden_channels=256, out_channels=1, k=4):
+    def __init__(self, in_dim=2, hidden_dim=256, out_dim=1, k=4):
         super(GaborNet, self).__init__()
 
         self.k = k
-        self.gabon_filters = nn.ModuleList(
-            [GaborFilter(in_channels, hidden_channels, alpha=6.0 / k) for _ in range(k)]
-        )
+        self.gabon_filters = nn.ModuleList([GaborLayer(in_dim, hidden_dim, 0, alpha=6.0 / k) for _ in range(k)])
         self.linear = nn.ModuleList(
-            [torch.nn.Linear(hidden_channels, hidden_channels) for _ in range(k - 1)]
-            + [torch.nn.Linear(hidden_channels, out_channels)]
-        )
+            [torch.nn.Linear(hidden_dim, hidden_dim) for _ in range(k - 1)] + [torch.nn.Linear(hidden_dim, out_dim)])
 
-        for lin in self.linear[: k - 1]:
-            lin.weight.data.uniform_(
-                -np.sqrt(1.0 / hidden_channels), np.sqrt(1.0 / hidden_channels)
-            )
+        for lin in self.linear[:k - 1]:
+            lin.weight.data.uniform_(-np.sqrt(1.0 / hidden_dim), np.sqrt(1.0 / hidden_dim))
 
     def forward(self, x):
-        zi = self.gabon_filters[0](x)
+
+        # Recursion - Equation 3
+        zi = self.gabon_filters[0](x)  # Eq 3.a
         for i in range(self.k - 1):
-            zi = self.linear[i](zi) * self.gabon_filters[i + 1](x)
+            zi = self.linear[i](zi) * self.gabon_filters[i + 1](x)  # Eq 3.b
 
-        return self.linear[self.k - 1](zi)
+        return self.linear[self.k - 1](zi)  # Eq 3.c
 
 
-    def train(model, optim, nb_epochs=15000):
-        psnrs = []
-        for _ in tqdm(range(nb_epochs)):
-            model_output = model(pixel_coordinates)
-            loss = ((model_output - pixel_values) ** 2).mean()
-            psnrs.append(20 * np.log10(1.0 / np.sqrt(loss.item())))
+def train(model, optim, nb_epochs=15000):
+    psnrs = []
+    for _ in tqdm(range(nb_epochs)):
+        model_output = model(pixel_coordinates)
+        loss = ((model_output - pixel_values) ** 2).mean()
+        psnrs.append(20 * np.log10(1.0 / np.sqrt(loss.item())))
 
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
 
-        return psnrs, model_output
+    return psnrs, model_output
+
 
 if __name__ == "__main__":
-    device = "cuda"
-    siren = SIREN([256, 256, 256, 256, 256]).to(device)
+    device = 'cuda'
+    siren = SIREN(layers=[256, 256, 256, 256, 256]).to(device)
     gabor_net = GaborNet().to(device)
 
-    img = (torch.from_numpy(skimage.data.grass()) - 127.5) / 127.5
+    # Target
+    img = ((torch.from_numpy(skimage.data.grass()) - 127.5) / 127.5)
     img = torchvision.transforms.Resize(256)(img.unsqueeze(0))[0]
     pixel_values = img.reshape(-1, 1).to(device)
 
@@ -171,38 +144,27 @@ if __name__ == "__main__":
     resolution = img.shape[0]
     tmp = torch.linspace(-1, 1, steps=resolution)
     x, y = torch.meshgrid(tmp, tmp)
-    pixel_coordinates = torch.cat((x.reshape(-1, 1), y.reshape(-1, 1)), dim=1).to(
-        device
-    )
+    pixel_coordinates = torch.cat((x.reshape(-1, 1), y.reshape(-1, 1)), dim=1).to(device)
 
     fig, axes = plt.subplots(1, 5, figsize=(15, 3))
-    axes[0].imshow(img, cmap="gray")
-    axes[0].set_title("Ground Truth Image", fontsize=13)
+    axes[0].imshow(img, cmap='gray')
+    axes[0].set_title('Ground Truth', fontsize=13)
 
     for i, model in enumerate([siren, gabor_net]):
         # Training
-        optim = torch.optim.Adam(
-            lr=1e-4 if (i == 0) else 1e-2, params=model.parameters()
-        )
+        optim = torch.optim.Adam(lr=1e-4 if (i == 0) else 1e-2, params=model.parameters())
         psnrs, model_output = train(model, optim, nb_epochs=1000)
 
-        axes[i + 1].imshow(
-            model_output.cpu().view(resolution, resolution).detach().numpy(),
-            cmap="gray",
-        )
-        axes[i + 1].set_title("SIREN" if (i == 0) else "GaborNet", fontsize=13)
-        axes[4].plot(
-            psnrs,
-            label="SIREN" if (i == 0) else "GaborNet",
-            c="green" if (i == 0) else "purple",
-        )
-        axes[4].set_xlabel("Iterations", fontsize=14)
-        axes[4].set_ylabel("PSNR", fontsize=14)
+        axes[i + 1].imshow(model_output.cpu().view(resolution, resolution).detach().numpy(), cmap='gray')
+        axes[i + 1].set_title('SIREN' if (i == 0) else 'GaborNet', fontsize=13)
+        axes[4].plot(psnrs, label='SIREN' if (i == 0) else 'GaborNet', c='green' if (i == 0) else 'purple')
+        axes[4].set_xlabel('Iterations', fontsize=14)
+        axes[4].set_ylabel('PSNR', fontsize=14)
         axes[4].legend(fontsize=13)
 
     for i in range(4):
         axes[i].set_xticks([])
         axes[i].set_yticks([])
-    axes[3].axis("off")
-    plt.savefig("Grass.png")
+    axes[3].axis('off')
+    plt.savefig('Grass.png')
     plt.close()
