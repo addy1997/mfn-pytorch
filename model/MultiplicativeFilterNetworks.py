@@ -5,11 +5,9 @@
 import numpy as np
 import skimage
 import matplotlib.pyplot as plt
-
 import torch
 import torch.nn as nn
 import torchvision
-
 from typing import List
 from tqdm import tqdm
 
@@ -84,7 +82,6 @@ class SIREN(nn.Module):
     def forward(self, input):
         return self.net(input)
 
-
 class GaborFilter(nn.Module):
     def __init__(self, in_features, out_features, alpha, beta=1.0):
         super(GaborFilter, self).__init__()
@@ -108,7 +105,6 @@ class GaborFilter(nn.Module):
         return torch.exp(-self.gamma.unsqueeze(0) / 2.0 * norm) * torch.sin(
             self.linear(x)
         )
-
 
 class GaborNet(nn.Module):
     """
