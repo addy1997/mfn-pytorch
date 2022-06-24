@@ -43,6 +43,7 @@ class SineLayer(nn.Module):
 class SIREN(nn.Module):
     """
     SIREN main class implementation
+    
     ...............................
     :param layers: list of number of neurons in each hidden layer
     :type layers: List[int]
@@ -121,6 +122,7 @@ class GaborFilter(nn.Module):
 class GaborNet(nn.Module):
     """
     GaborNet implementation
+    
     .......................
     :param in_channels: number of input channels
     :type in_channels: int
