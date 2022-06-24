@@ -68,7 +68,7 @@ class SIREN(nn.Module):
     def __init__(
         self,
         layers: List[int],
-        omega_0_initial=30,
+        omega_0_initial=38,
         omega_0=1,
         in_features=2,
         hidden_features=256,
