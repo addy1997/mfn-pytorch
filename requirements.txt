@@ -1,6 +1,6 @@
 matplotlib==3.3.4
 numpy==1.22.0
-pillow==9.0.1
+pillow==9.3.0
 skimage==0.17.2
 torch==1.9.0
 torchvision==0.10.0
